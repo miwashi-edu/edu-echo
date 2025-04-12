@@ -139,7 +139,7 @@ window.onload = () => {
     })
 }
 EOF
-``
+```
 
 ## Dockerfile
 
