@@ -16,6 +16,9 @@ touch ./public/index.css
 mkdir src
 touch ./src/app.js
 npm pkg set scripts.start="node ./src/app.js"
+npm pkg set scripts.dev="node --watch ./src/app.js"
+npm pkg set scripts.build="docker build -t http-logger ."
+npm pkg set scripts.docker="docker run -p 3000:3000 http-logger"
 npm install express
 echo "node_modules" > .gitignore
 ```
