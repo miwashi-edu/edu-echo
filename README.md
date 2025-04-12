@@ -1,5 +1,7 @@
 # edu-echo
 
+## Log requests at https://edu-echo.fly.dev
+
 ## Instructions
 
 ```bash
