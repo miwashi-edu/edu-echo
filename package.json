@@ -5,14 +5,18 @@
   "main": "src/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node ./src/app.js",
-    "dev": "node --watch ./src/app.js"
+    "start": "node ./src/start.js",
+    "dev": "node --watch ./src/start.js",
+    "build": "docker build -t http-logger .",
+    "docker": "docker run -p 3000:3000 http-logger"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "express": "^5.1.0"
+    "dgram": "^1.0.1",
+    "express": "^5.1.0",
+    "net": "^1.0.2"
   }
 }

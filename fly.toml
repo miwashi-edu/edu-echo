@@ -1,0 +1,20 @@
+app = "your-app-name"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  ports = [{ port = 80 }]
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 9000
+  ports = [{ port = 9000 }]
+
+[[services]]
+  protocol = "udp"
+  internal_port = 9001
+  ports = [{ port = 9001 }]
