@@ -1,6 +1,18 @@
 version: '3.9'
+
 services:
-  logger:
-    build: .
+  http-logger:
+    image: http-logger
+    container_name: http-logger
+    hostname: logger
+    networks:
+      - iotnet
     ports:
-      - "3000:3000"
+      - "3000:3000"       # HTTP
+      - "9000:9000"       # TCP Echo
+      - "9001:9001/udp"   # UDP Echo
+    restart: unless-stopped
+
+networks:
+  iotnet:
+    external: true
