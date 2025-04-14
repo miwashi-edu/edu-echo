@@ -15,12 +15,26 @@ touch ./public/index.js
 touch ./public/index.css
 mkdir src
 touch ./src/app.js
-npm pkg set scripts.start="node ./src/app.js"
-npm pkg set scripts.dev="node --watch ./src/app.js"
+npm pkg set scripts.start="node ./src/start.js"
+npm pkg set scripts.dev="node --watch ./src/start.js"
 npm pkg set scripts.build="docker build -t http-logger ."
-npm pkg set scripts.docker="docker run -p 3000:3000 http-logger"
+npm pkg set scripts.docker="docker run -d -h logger --name http-logger --network iotnet -p 3000:3000 -p 9000:9000 -p 9001:9001/udp http-logger"
 npm install express
-echo "node_modules" > .gitignore
+curl -o .gitignore https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore
+```
+
+## ./src/start.js
+
+```bash
+cat > ./src/start.js << 'EOF'
+const startTCP = require('./tcp')
+const startUDP = require('./udp')
+
+startTCP()
+startUDP()
+
+require('./app')
+EOF
 ```
 
 ## ./src/app.js
@@ -64,6 +78,113 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`Logger running on port ${PORT}`)
 })
+EOF
+```
+
+## ./src/tcp.js
+
+```bash
+cat > ./src/tcp.js << 'EOF'
+const net = require('net')
+const http = require('http')
+const TCP_PORT = process.env.TCP_PORT || 9000
+const PORT = process.env.PORT || 3000
+const TARGET = `http://localhost:${PORT}`
+
+function sendLog(data) {
+  const body = JSON.stringify(data)
+  const req = http.request(TARGET, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Content-Length': body.length }
+  })
+  req.write(body)
+  req.end()
+}
+
+module.exports = function startTCP() {
+  const server = net.createServer(socket => {
+    sendLog({ type: 'tcp', event: 'connect', ip: socket.remoteAddress })
+
+    socket.on('data', data => {
+      console.log(`TCP Message received ${data}`);
+      sendLog({ type: 'tcp', event: 'data', ip: socket.remoteAddress, message: data.toString() })
+      socket.write(data)
+    })
+
+    socket.on('end', () => {
+      sendLog({ type: 'tcp', event: 'disconnect', ip: socket.remoteAddress })
+    })
+  })
+
+  server.listen(TCP_PORT, () => {
+    sendLog({ type: 'tcp', event: 'start', port: TCP_PORT })
+  })
+  console.log('TCP server started');
+}
+EOF
+```
+
+## ./src/udp.js
+
+```bash
+cat > ./src/upd.js << 'EOF'
+const dgram = require('dgram')
+const http = require('http')
+const UDP_PORT = process.env.UDP_PORT || 9001
+const PORT = process.env.PORT || 3000
+const TARGET = `http://localhost:${PORT}`
+
+function sendLog(data) {
+    const body = JSON.stringify(data)
+    const req = http.request(TARGET, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Content-Length': body.length}
+    })
+    req.write(body)
+    req.end()
+}
+
+module.exports = function startUDP() {
+    const server = dgram.createSocket('udp4');
+
+    server.on('message', (msg, rinfo) => {
+        console.log(`UDP Message received ${msg}`);
+        sendLog({
+            type: 'udp',
+            event: 'message',
+            ip: rinfo.address,
+            port: rinfo.port,
+            message: msg.toString()
+        })
+        server.send(msg, rinfo.port, rinfo.address)
+    })
+
+    server.on('listening', function () {
+        var address = server.address();
+        var port = address.port;
+        var family = address.family;
+        var ipaddr = address.address;
+        console.log(`Server is listening at port ${port}`);
+        console.log('Server ip :' + ipaddr);
+        console.log('Server is IP4/IP6 : ' + family);
+    });
+
+    server.on('error', function (error) {
+        console.log('Error: ' + error);
+        server.close();
+    });
+
+    server.on('close', function () {
+        console.log('Socket is closed !');
+    });
+
+    server.bind(UDP_PORT, () => {
+      console.log('bind');
+      sendLog({ type: 'udp', event: 'start', port: UDP_PORT })
+    });
+
+    console.log('UDP server started');
+}
 EOF
 ```
 
@@ -112,32 +233,33 @@ EOF
 
 ```bash
 cat > ./public/index.js << 'EOF'
-window.onload = () => {
-  fetch('/logs')
-    .then(res => res.json())
-    .then(logs => {
-      const container = document.getElementById('logs')
-      logs.forEach(entry => {
-        const div = document.createElement('div')
-        div.className = 'bubble'
-        div.innerHTML = `
-          <div><strong>${entry.method}</strong> <code>${entry.originalUrl}</code></div>
+function fetchLogs() {
+    const container = document.getElementById('logs')
+    container.innerHTML = '' // Clear previous logs
+
+    fetch('/logs')
+        .then(res => res.json())
+        .then(logs => {
+            logs.forEach(entry => {
+                const div = document.createElement('div')
+                div.className = 'bubble'
+                div.innerHTML = `
+          <div><strong>${entry.method || entry.type}</strong> <code>${entry.path || entry.event}</code></div>
           <div class="meta">${entry.time} — ${entry.ip}</div>
           <details>
             <summary>Details</summary>
-            <pre>${JSON.stringify({
-              query: entry.query,
-              headers: entry.headers,
-              body: entry.body,
-              hostname: entry.hostname,
-              userAgent: entry.userAgent
-            }, null, 2)}</pre>
+            <pre>${JSON.stringify(entry, null, 2)}</pre>
           </details>
         `
-        container.appendChild(div)
-      })
-    })
+                container.appendChild(div)
+            })
+        })
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+    fetchLogs()
+    document.getElementById('refresh').addEventListener('click', fetchLogs)
+})
 EOF
 ```
 
@@ -153,15 +275,28 @@ COPY . .
 CMD ["npm", "start"]
 EOF
 ```
+## docker-compose.yml
 
 ```bash
 cat > docker-compose.yml << 'EOF'
 version: '3.9'
+
 services:
-  logger:
-    build: .
+  http-logger:
+    image: http-logger
+    container_name: http-logger
+    hostname: logger
+    networks:
+      - iotnet
     ports:
-      - "3000:3000"
+      - "3000:3000"       # HTTP
+      - "9000:9000"       # TCP Echo
+      - "9001:9001/udp"   # UDP Echo
+    restart: unless-stopped
+
+networks:
+  iotnet:
+    external: true
 EOF
 ```
 
@@ -169,10 +304,10 @@ EOF
 
 ```bash
 docker build -t http-logger .
-docker run -p 3000:3000 http-logger
+docker run -d --name http-logger -h http-logger --network iotnet -p 3000:3000 -p 9000:9000 -p 9001:9001/udp http-logger
 ```
 
-## Run with docker
+## Run with docker compose
 
 ```bash
 docker compose up --build
