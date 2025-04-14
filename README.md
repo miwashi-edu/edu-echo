@@ -9,6 +9,13 @@ rm -rf http-logger
 mkdir http-logger
 cd http-logger
 npm init -y
+npm pkg set scripts.start="node ./src/start.js"
+npm pkg set scripts.dev="node --watch ./src/start.js"
+npm pkg set scripts.build="docker build -t http-logger ."
+npm pkg set scripts.docker="docker run -d -h logger --name http-logger --network iotnet -p 3000:3000 -p 9000:9000 -p 9001:9001/udp http-logger"
+npm install express
+npm install dgram
+npm install net
 mkdir public
 touch ./public/index.html
 touch ./public/index.js
@@ -18,11 +25,6 @@ touch ./src/start.js
 touch ./src/app.js
 touch ./src/tcp.js
 touch ./src/udp.js
-npm pkg set scripts.start="node ./src/start.js"
-npm pkg set scripts.dev="node --watch ./src/start.js"
-npm pkg set scripts.build="docker build -t http-logger ."
-npm pkg set scripts.docker="docker run -d -h logger --name http-logger --network iotnet -p 3000:3000 -p 9000:9000 -p 9001:9001/udp http-logger"
-npm install express
 curl -o .gitignore https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore
 ```
 
