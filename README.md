@@ -5,6 +5,7 @@
 ```bash
 git clone https://github.com/miwashi-edu/edu-echo
 cd edu-echo
+# RUN
 npm install
 npm start
 # OR
