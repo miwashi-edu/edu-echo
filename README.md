@@ -1,5 +1,25 @@
 # edu-echo
 
+## Clone & Run
+
+```bash
+git clone https://github.com/miwashi-edu/edu-echo
+cd edu-echo
+npm install
+npm start
+# OR
+docker compose up --build
+```
+
+## Test
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"msg":"hello from curl"}' http://localhost:3000
+echo "hello from udp" | nc -u -w1 127.0.0.1 9001
+echo "hello from tcp" | nc 127.0.0.1 9000
+```
+
+
 ## Instructions
 
 ```bash
