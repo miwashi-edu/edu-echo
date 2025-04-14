@@ -14,7 +14,10 @@ touch ./public/index.html
 touch ./public/index.js
 touch ./public/index.css
 mkdir src
+touch ./src/start.js
 touch ./src/app.js
+touch ./src/tcp.js
+touch ./src/udp.js
 npm pkg set scripts.start="node ./src/start.js"
 npm pkg set scripts.dev="node --watch ./src/start.js"
 npm pkg set scripts.build="docker build -t http-logger ."
