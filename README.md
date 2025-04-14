@@ -9,6 +9,9 @@ npm install
 npm start
 # OR
 docker compose up --build
+# OR
+docker build -t http-logger .
+docker run -d --name http-logger -h http-logger --network iotnet -p 3000:3000 -p 9000:9000 -p 9001:9001/udp http-logger
 ```
 
 ## Test
